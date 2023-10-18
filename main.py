@@ -15,6 +15,8 @@ parser.add_argument("webhook")
 
 args = parser.parse_args()
 
+os.chdir(os.path.dirname(__file__))
+
 URL = f"http://localhost:8080/{args.username}/with_replies/rss"
 URL_REGEX = r"http://.*?/.*?/status/(\d+)"
 NEW_DOMAIN = f"https://vxtwitter.com/{args.username}/status/"
@@ -29,7 +31,7 @@ if feed.status != 200 or len(feed.entries) == 0:
     if args.report and not os.access("fail_marker", os.F_OK):
             requests.post(WEBHOOK, json={
                 "content": "bep it broke help",
-            })
+            }, timeout=20)
             open("fail_marker", "x").close()
     print("Failed to fetch", feed.status)
 elif args.report:
@@ -50,7 +52,7 @@ for tweet in reversed(feed.entries):
         if not args.no_send:
             requests.post(WEBHOOK, json={
                 "content": link,
-            })
+            }, timeout=20)
         else:
             print(link)
         if not args.no_store:
