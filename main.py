@@ -34,6 +34,7 @@ if feed.status != 200 or len(feed.entries) == 0:
             }, timeout=20)
             open("fail_marker", "x").close()
     print("Failed to fetch", feed.status)
+    exit(1)
 elif args.report:
     try:
         os.remove("fail_marker")
