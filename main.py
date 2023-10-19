@@ -22,24 +22,42 @@ URL_REGEX = r"http://.*?/.*?/status/(\d+)"
 NEW_DOMAIN = f"https://vxtwitter.com/{args.username}/status/"
 WEBHOOK = args.webhook
 
-def url_to_id(url):
-    return re.search(URL_REGEX, url)[1]
 
-feed = feedparser.parse(URL)
+def add_fail():
+    with open("fail_marker", "r+") as file:
+        res = file.readline()
+        if len(res) == 0:
+            fail_counter = 1
+        else:
+            fail_counter = int(res)
+        file.seek(0)
+        file.truncate()
+        file.write(f"{fail_counter+1}\n")
+        return fail_counter
 
-if feed.status != 200 or len(feed.entries) == 0:
-    if args.report and not os.access("fail_marker", os.F_OK):
-            requests.post(WEBHOOK, json={
-                "content": "bep it broke help",
-            }, timeout=20)
-            open("fail_marker", "x").close()
-    print("Failed to fetch", feed.status)
-    exit(1)
-elif args.report:
+
+def remove_fail():
     try:
         os.remove("fail_marker")
     except FileNotFoundError:
         pass
+
+
+feed = feedparser.parse(URL)
+
+if feed.status != 200 or len(feed.entries) == 0:
+    if args.report and add_fail() == 2:
+        requests.post(
+            WEBHOOK,
+            json={
+                "content": "bep it broke help",
+            },
+            timeout=20,
+        )
+    print("Failed to fetch", feed.status)
+    exit(1)
+else:
+    remove_fail()
 
 seen = None
 with open("seen_tweets.json") as file:
@@ -51,9 +69,13 @@ for tweet in reversed(feed.entries):
     if id not in seen:
         link = NEW_DOMAIN + id
         if not args.no_send:
-            requests.post(WEBHOOK, json={
-                "content": link,
-            }, timeout=20)
+            requests.post(
+                WEBHOOK,
+                json={
+                    "content": link,
+                },
+                timeout=20,
+            )
         else:
             print(link)
         if not args.no_store:
