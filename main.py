@@ -24,16 +24,21 @@ WEBHOOK = args.webhook
 
 
 def add_fail():
-    with open("fail_marker", "r+") as file:
-        res = file.readline()
-        if len(res) == 0:
-            fail_counter = 1
-        else:
-            fail_counter = int(res)
-        file.seek(0)
-        file.truncate()
-        file.write(f"{fail_counter+1}\n")
-        return fail_counter
+    try:
+        with open("fail_marker", "r+") as file:
+            res = file.readline()
+            if len(res) == 0:
+                fail_counter = 1
+            else:
+                fail_counter = int(res)
+            file.seek(0)
+            file.truncate()
+            file.write(f"{fail_counter+1}\n")
+            return fail_counter
+    except FileNotFoundError:
+        with open("fail_marker", "x") as file:
+            file.write("1")
+            return 0
 
 
 def remove_fail():
@@ -46,7 +51,7 @@ def remove_fail():
 feed = feedparser.parse(URL)
 
 if feed.status != 200 or len(feed.entries) == 0:
-    if args.report and add_fail() == 2:
+    if args.report and add_fail() == 1:
         requests.post(
             WEBHOOK,
             json={
