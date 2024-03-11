@@ -8,6 +8,7 @@ import requests
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--report", action="store_true")
+parser.add_argument("--no-replies", action="store_true")
 parser.add_argument("--no-send", action="store_true")
 parser.add_argument("--no-store", action="store_true")
 parser.add_argument("username")
@@ -17,7 +18,7 @@ args = parser.parse_args()
 
 os.chdir(os.path.dirname(__file__))
 
-URL = f"http://localhost:8080/{args.username}/with_replies/rss"
+URL = f"http://localhost:8083/{args.username}{'/rss' if args.no_replies else '/with_replies/rss'}"
 URL_REGEX = r"http://.*?/.*?/status/(\d+)"
 NEW_DOMAIN = f"https://vxtwitter.com/{args.username}/status/"
 WEBHOOK = args.webhook
