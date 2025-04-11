@@ -9,6 +9,7 @@ import requests
 parser = argparse.ArgumentParser()
 parser.add_argument("--report", action="store_true")
 parser.add_argument("--no-replies", action="store_true")
+parser.add_argument("--no-retweets", action="store_true")
 parser.add_argument("--no-send", action="store_true")
 parser.add_argument("--no-store", action="store_true")
 parser.add_argument("username")
@@ -19,7 +20,8 @@ args = parser.parse_args()
 os.chdir(os.path.dirname(__file__))
 
 db = sqlite3.connect("./seen_tweets.db", isolation_level=None)
-db.executescript("""
+db.executescript(
+    """
 CREATE TABLE IF NOT EXISTS tweets (
     id INTEGER NOT NULL,
     poster TEXT NOT NULL,
@@ -30,7 +32,8 @@ CREATE TABLE IF NOT EXISTS settings (
     fail_count INTEGER NOT NULL DEFAULT 0
 );
 INSERT OR IGNORE INTO settings (id, fail_count) VALUES (1,0);
-""")
+"""
+)
 
 URL = f"http://localhost:8083/{args.username}{'/rss' if args.no_replies else '/with_replies/rss'}"
 URL_REGEX = r"http://.*?/.*?/status/(\d+)"
@@ -45,6 +48,7 @@ def add_fail():
         return 0
     else:
         return fail_marker
+
 
 def remove_fail():
     db.execute("UPDATE settings SET fail_count = 0")
@@ -68,7 +72,11 @@ else:
 
 for tweet in reversed(feed.entries):
     id = re.search(URL_REGEX, tweet["id"])[1]
-    exists = db.execute("SELECT TRUE FROM tweets WHERE id = ? AND poster = ?", (id, args.username)).fetchone()
+    if args.no_retweets and tweet["author"].lstrip("@") != args.username:
+        continue
+    exists = db.execute(
+        "SELECT TRUE FROM tweets WHERE id = ? AND poster = ?", (id, args.username)
+    ).fetchone()
     if not exists:
         link = NEW_DOMAIN + id
         if not args.no_send:
@@ -82,4 +90,6 @@ for tweet in reversed(feed.entries):
         else:
             print(link)
         if not args.no_store:
-            db.execute("INSERT INTO tweets (id, poster) VALUES (?, ?)", (id, args.username))
+            db.execute(
+                "INSERT INTO tweets (id, poster) VALUES (?, ?)", (id, args.username)
+            )
